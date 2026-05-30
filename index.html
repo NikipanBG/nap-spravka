@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
+:root {h
   --bg:#f0ede6; --surface:#fff; --surface2:#f7f4ef;
   --border:#d8d3c8; --border2:#e8e4dc;
   --ink:#1a1814; --ink2:#5a5549; --ink3:#9a948a;
@@ -270,7 +270,7 @@ td.mono { font-family:var(--mono); font-size:11px; }
 
           <div class="ocr-src-row three">
             <button class="btn btn-primary ocr-src-btn">📷 Снимай
-              <input type="file" accept="image/*" capture="environment" onchange="ocrFilesPicked(this.files);this.value=''">
+              <input type="file" accept="image/*,application/pdf" multiple onchange="ocrFilesPicked(this.files);this.value=''">
             </button>
             <button class="btn btn-ghost ocr-src-btn">📁 Файл
               <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" multiple onchange="ocrFilesPicked(this.files);this.value=''">
