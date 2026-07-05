@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>НАП · Справка + OCR на фактури</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f0ede6; --surface:#fff; --surface2:#f7f4ef;
+  --border:#d8d3c8; --border2:#e8e4dc;
+  --ink:#1a1814; --ink2:#5a5549; --ink3:#9a948a;
+  --accent:#c8461e; --accent2:#2a6e4e; --amber:#c07a1a; --blue:#1e4fa0; --dup:#9b1aad;
+  --accent-light:#fff5f3; --green-light:#f4fbf7;
+  --font:'Syne',sans-serif; --mono:'DM Mono',monospace;
+  --radius:6px; --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.06);
+}
+body { background:var(--bg); color:var(--ink); font-family:var(--font); font-size:13px; min-height:100vh; }
+
+/* HEADER */
+.header { background:var(--ink); color:#f0ede6; padding:1rem 1.5rem; display:flex; align-items:center; gap:1rem; border-bottom:2px solid var(--accent); flex-wrap:wrap; }
+.header-logo { font-size:22px; font-weight:800; letter-spacing:-1px; }
+.header-logo span { color:var(--accent); }
+.header-sub { font-size:11px; color:#9a948a; font-family:var(--mono); }
+.header-right { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+/* TABS */
+.tabs { display:flex; background:var(--ink); border-bottom:2px solid var(--border); overflow-x:auto; }
+.tab { padding:.7rem 1.2rem; font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; color:#6a6560; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .15s; user-select:none; white-space:nowrap; }
+.tab:hover { color:#f0ede6; }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-badge { display:inline-block; background:var(--dup); color:#fff; font-size:9px; padding:1px 5px; border-radius:10px; margin-left:4px; vertical-align:middle; }
+.tab-count { display:inline-block; background:var(--accent2); color:#fff; font-size:9px; padding:1px 6px; border-radius:10px; margin-left:4px; vertical-align:middle; }
+
+/* PANELS */
+.panel { display:none; padding:1.2rem 1.5rem; }
+.panel.active { display:block; }
+
+/* UPLOAD ZONES */
+.upload-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:1rem; }
+.drop-zone { background:var(--surface); border:2px dashed var(--border); border-radius:var(--radius); padding:1.4rem; text-align:center; cursor:pointer; transition:all .2s; position:relative; }
+.drop-zone:hover, .drop-zone.drag { border-color:var(--accent); background:#fff8f6; }
+.drop-zone.loaded { border-color:var(--accent2); border-style:solid; background:#f4fbf7; }
+.drop-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; z-index:2; }
+.dz-tag { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
+.dz-tag.nap { color:var(--blue); }
+.dz-tag.my { color:var(--accent2); }
+.dz-icon { font-size:28px; margin-bottom:6px; }
+.dz-hint { font-size:11px; color:var(--ink3); }
+.dz-name { font-size:11px; font-family:var(--mono); color:var(--accent2); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dz-info { font-size:10px; color:var(--ink3); font-family:var(--mono); margin-top:2px; }
+
+/* BUTTONS */
+.btn { padding:7px 16px; border-radius:var(--radius); font-size:12px; font-weight:600; cursor:pointer; font-family:var(--font); transition:all .15s; border:none; letter-spacing:.03em; white-space:nowrap; }
+.btn-primary { background:var(--accent); color:#fff; } .btn-primary:hover { background:#a83818; }
+.btn-primary:disabled { opacity:.35; cursor:not-allowed; }
+.btn-ghost { background:transparent; border:1.5px solid var(--border); color:var(--ink2); } .btn-ghost:hover { border-color:var(--ink); color:var(--ink); }
+.btn-green { background:var(--accent2); color:#fff; } .btn-green:hover { background:#1f5a3e; }
+.btn-amber { background:var(--amber); color:#fff; } .btn-amber:hover { background:#a06512; }
+.btn-blue { background:var(--blue); color:#fff; } .btn-blue:hover { background:#163d80; }
+
+/* ARCHIVE STRIP */
+.archive-strip { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:.75rem 1rem; margin-bottom:1rem; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.archive-title { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink3); }
+.archive-info { font-size:11px; color:var(--ink3); font-family:var(--mono); margin-left:4px; }
+.restore-zone { position:relative; display:inline-block; }
+.restore-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; z-index:2; width:100%; height:100%; }
+
+/* STATS */
+.stats-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:1rem; }
+.stat-card { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:.75rem 1rem; }
+.stat-val { font-size:24px; font-weight:800; line-height:1; }
+.stat-lbl { font-size:10px; color:var(--ink3); margin-top:4px; font-family:var(--mono); text-transform:uppercase; letter-spacing:.06em; }
+.s-diff .stat-val { color:var(--accent); } .s-match .stat-val { color:var(--accent2); }
+.s-total .stat-val { color:var(--blue); } .s-amber .stat-val { color:var(--amber); }
+
+/* FILTERS / TOOLBAR */
+.toolbar { display:flex; gap:6px; align-items:center; margin-bottom:6px; flex-wrap:wrap; }
+.filter-chip { font-size:11px; padding:4px 12px; border-radius:20px; border:1.5px solid var(--border); background:transparent; color:var(--ink3); cursor:pointer; font-family:var(--font); font-weight:500; transition:all .15s; }
+.filter-chip:hover { border-color:var(--ink2); color:var(--ink2); }
+.filter-chip.active { background:var(--ink); color:#f0ede6; border-color:var(--ink); }
+.filter-chip.f-diff.active { background:var(--accent); border-color:var(--accent); }
+.filter-chip.f-match.active { background:var(--accent2); border-color:var(--accent2); }
+.filter-chip.f-ona.active { background:var(--blue); border-color:var(--blue); }
+.filter-chip.f-unpaid.active { background:var(--dup); border-color:var(--dup); }
+.search-box { background:var(--surface); border:1.5px solid var(--border); color:var(--ink); font-size:12px; padding:5px 10px; border-radius:var(--radius); font-family:var(--mono); width:180px; }
+.search-box:focus { outline:none; border-color:var(--ink2); }
+.sort-row { display:flex; gap:6px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+.sort-lbl { font-size:11px; color:var(--ink3); font-family:var(--mono); }
+.sort-sel { font-size:11px; padding:4px 8px; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface); color:var(--ink); font-family:var(--font); cursor:pointer; }
+.sort-dir { font-size:12px; padding:4px 10px; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface); color:var(--ink); cursor:pointer; font-family:var(--font); }
+.sort-dir:hover { border-color:var(--ink2); }
+
+/* TABLES */
+.table-wrap { border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; overflow-x:auto; box-shadow:var(--shadow); }
+.table-scroll { max-height:55vh; overflow-y:auto; }
+.data-table { width:100%; border-collapse:collapse; font-size:12px; }
+.data-table thead th { background:var(--ink); color:#c8c3ba; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; padding:8px 10px; text-align:left; white-space:nowrap; border-right:1px solid #2e2c28; position:sticky; top:0; z-index:3; cursor:pointer; user-select:none; }
+.data-table thead th:hover { color:#fff; }
+.data-table thead th.sort-asc::after { content:' ↑'; }
+.data-table thead th.sort-desc::after { content:' ↓'; }
+.data-table thead th:last-child { border-right:none; }
+.data-table tbody tr { border-bottom:1px solid var(--border2); transition:background .1s; }
+.data-table tbody tr:hover { background:#faf8f5; }
+.data-table tbody tr.r-diff { background:#fff5f3; }
+.data-table tbody tr.r-diff:hover { background:#ffe8e4; }
+.data-table tbody tr.r-ona { background:#f3f7ff; }
+.data-table tbody tr.r-onb { background:#f3fbf6; }
+td { padding:6px 10px; white-space:nowrap; vertical-align:middle; }
+td.wide { white-space:normal; max-width:160px; font-size:12px; }
+td.mono { font-family:var(--mono); font-size:11px; }
+.val-a { color:var(--blue); font-family:var(--mono); }
+.val-b { color:var(--accent2); font-family:var(--mono); }
+.val-diff { color:var(--accent); font-family:var(--mono); font-weight:600; }
+.badge { font-size:9px; padding:2px 7px; border-radius:3px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; }
+.bd-diff { background:#ffe0d9; color:var(--accent); }
+.bd-match { background:#d6f3e5; color:var(--accent2); }
+.bd-ona { background:#dce8ff; color:var(--blue); }
+.bd-onb { background:#d9f3e8; color:var(--accent2); }
+
+/* ENTRY TABLE */
+.me-wrap { border:1px solid var(--border); border-radius:var(--radius); overflow:auto; box-shadow:var(--shadow); margin-bottom:1rem; max-height:55vh; }
+.me-table { width:100%; border-collapse:collapse; font-size:12px; }
+.me-table thead th { background:var(--ink); color:#c8c3ba; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; padding:8px 6px; text-align:left; white-space:nowrap; border-right:1px solid #2e2c28; position:sticky; top:0; z-index:3; }
+.me-table thead th:last-child { border-right:none; }
+.me-table tbody tr { border-bottom:1px solid var(--border2); }
+.me-table tbody tr:hover { background:#faf8f5; }
+.me-table tbody tr.row-dup { background:#fdf0ff; }
+.me-table td { padding:2px 3px; }
+.me-input { width:100%; background:transparent; border:none; padding:4px 6px; font-family:var(--mono); font-size:12px; color:var(--ink); border-radius:3px; transition:background .1s; }
+.me-input:focus { outline:none; background:var(--surface); box-shadow:0 0 0 2px rgba(200,70,30,.25); }
+.me-input.num { text-align:right; }
+.me-input.hi { background:#f8e6ff !important; color:var(--dup); }
+.me-select { width:100%; background:transparent; border:none; padding:4px 6px; font-family:var(--font); font-size:12px; color:var(--ink); cursor:pointer; }
+.me-del { background:none; border:none; cursor:pointer; color:var(--ink3); font-size:14px; padding:2px 6px; border-radius:3px; transition:all .1s; }
+.me-del:hover { color:var(--accent); background:#ffe0d9; }
+
+/* INLINE EDIT */
+.inline-edit { background:transparent; border:none; border-bottom:1.5px dashed var(--border); padding:2px 4px; font-family:var(--mono); font-size:11px; color:var(--ink); width:100%; min-width:80px; }
+.inline-edit:focus { outline:none; border-bottom-color:var(--accent2); background:var(--surface2); }
+.inline-edit.no-pay { color:var(--accent); font-style:italic; }
+.inline-sel { background:transparent; border:none; border-bottom:1.5px dashed var(--border); padding:2px 4px; font-size:11px; color:var(--ink); cursor:pointer; width:100%; }
+.inline-sel:focus { outline:none; }
+
+/* MODAL */
+.modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100; align-items:center; justify-content:center; }
+.modal-bg.open { display:flex; }
+.modal { background:var(--surface); border-radius:var(--radius); padding:1.5rem; width:620px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,.2); max-height:90vh; overflow-y:auto; }
+.modal h3 { font-size:15px; font-weight:700; margin-bottom:8px; }
+.modal p { font-size:12px; color:var(--ink2); margin-bottom:12px; line-height:1.6; }
+.modal textarea { width:100%; height:180px; font-family:var(--mono); font-size:11px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:8px; color:var(--ink); resize:vertical; }
+.modal textarea:focus { outline:none; border-color:var(--ink2); }
+.modal input[type=text], .modal input[type=password] { width:100%; font-family:var(--mono); font-size:12px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 10px; color:var(--ink); margin-bottom:10px; }
+.modal input:focus { outline:none; border-color:var(--ink2); }
+.modal label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--ink3); display:block; margin-bottom:4px; }
+.modal-row { display:flex; gap:8px; margin-top:10px; justify-content:flex-end; }
+.modal ol { font-size:12px; color:var(--ink2); line-height:1.7; margin:0 0 12px 18px; }
+.modal code { font-size:10px; background:var(--surface2); padding:1px 5px; border-radius:3px; font-family:var(--mono); }
+
+/* MESSAGES */
+.msg { font-size:12px; padding:8px 12px; border-radius:var(--radius); margin-bottom:10px; font-family:var(--mono); }
+.msg.ok { background:#d6f3e5; border:1px solid #a8e2c4; color:var(--accent2); }
+.msg.err { background:#ffe0d9; border:1px solid #f0b0a0; color:var(--accent); }
+.msg.info { background:#dce8ff; border:1px solid #a8c4f0; color:var(--blue); }
+.msg.warn { background:#f0d6f5; border:1px solid #d0a0e0; color:var(--dup); }
+
+/* MISC */
+.action-bar { display:flex; gap:8px; align-items:center; margin-bottom:1rem; flex-wrap:wrap; }
+.rows-count { font-size:11px; color:var(--ink3); font-family:var(--mono); }
+.section-head { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink3); margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border2); display:flex; align-items:center; gap:8px; }
+.section-head span { flex:1; }
+.hint { font-size:11px; color:var(--ink3); font-family:var(--mono); margin-top:6px; line-height:1.6; }
+
+/* ── OCR TAB ── */
+.ocr-grid { display:grid; grid-template-columns:330px 1fr; gap:1rem; align-items:start; }
+.ocr-card { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+.ocr-card-head { padding:12px 14px; border-bottom:1px solid var(--border2); font-weight:700; font-size:12px; letter-spacing:.04em; display:flex; align-items:center; gap:8px; background:var(--surface2); text-transform:uppercase; color:var(--ink2); }
+.ocr-card-body { padding:14px; display:flex; flex-direction:column; gap:12px; }
+.ocr-field-label { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink3); margin-bottom:5px; display:block; }
+.ocr-api-row { display:flex; gap:6px; }
+.ocr-api-row input { flex:1; }
+.ocr-input { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); color:var(--ink); font-family:var(--mono); font-size:12px; padding:8px 10px; width:100%; outline:none; transition:border-color .15s; }
+.ocr-input:focus { border-color:var(--accent); background:#fff; }
+.ocr-drop { border:2px dashed var(--border); border-radius:var(--radius); padding:1.4rem 1rem; text-align:center; cursor:pointer; transition:all .2s; background:var(--surface2); }
+.ocr-drop:hover, .ocr-drop.drag { border-color:var(--accent); background:#fff8f6; }
+.ocr-drop-icon { font-size:30px; display:block; margin-bottom:6px; }
+.ocr-drop-main { font-weight:700; font-size:13px; margin-bottom:3px; }
+.ocr-drop-sub { font-size:11px; color:var(--ink3); }
+.ocr-src-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.ocr-src-row.three { grid-template-columns:1fr 1fr 1fr; }
+.ocr-src-btn { position:relative; overflow:hidden; }
+.ocr-src-btn input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+.ocr-queue { display:flex; flex-direction:column; gap:6px; }
+.ocr-chip { display:flex; align-items:center; gap:8px; padding:7px 10px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); font-size:11px; }
+.ocr-chip .nm { flex:1; font-family:var(--mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ocr-chip .st { font-size:14px; }
+.ocr-chip.done { background:var(--green-light); border-color:#b8ddbf; }
+.ocr-chip.err { background:#ffe0d9; border-color:#f0b0a0; }
+.ocr-rm { background:none; border:none; color:var(--ink3); cursor:pointer; font-size:13px; padding:2px 4px; }
+.ocr-rm:hover { color:var(--accent); }
+.ocr-status { display:none; align-items:center; gap:9px; padding:9px 12px; border-radius:var(--radius); font-size:12px; font-weight:600; font-family:var(--mono); }
+.ocr-status.loading { display:flex; background:var(--accent-light); color:var(--accent); border:1px solid #f0c4a8; }
+.ocr-status.error { display:flex; background:#ffe0d9; color:var(--accent); border:1px solid #f0b0a0; }
+.ocr-status.success { display:flex; background:var(--green-light); color:var(--accent2); border:1px solid #b8ddbf; }
+.spinner { width:14px; height:14px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:spin .65s linear infinite; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.ocr-empty { text-align:center; padding:2.5rem 1rem; color:var(--ink3); }
+.ocr-empty .ic { font-size:38px; display:block; margin-bottom:10px; opacity:.5; }
+.ocr-hint { font-size:11px; color:var(--ink3); padding:8px 11px; background:var(--surface2); border-radius:var(--radius); border-left:2px solid var(--border); line-height:1.55; }
+.ocr-hint a { color:var(--accent); text-decoration:none; }
+.gd-warn { font-size:10px; color:var(--amber); font-family:var(--mono); margin-top:4px; }
+
+@media(max-width:820px){ .ocr-grid { grid-template-columns:1fr; } }
+@media(max-width:700px) { .upload-grid { grid-template-columns:1fr; } .stats-grid { grid-template-columns:repeat(3,1fr); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-logo">НАП<span>·</span>Справка</div>
+    <div class="header-sub">OCR на фактури + сравнение на декларирани продажби по ЗДДС</div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-ghost" style="color:#f0ede6;border-color:#4a4740" onclick="openGdSettings()">⚙ Google Drive</button>
+    <button class="btn btn-amber" onclick="exportAllXlsx()">⬇ Експорт XLSX</button>
+    <button class="btn btn-ghost" style="color:#f0ede6;border-color:#4a4740" onclick="clearStorage()">🗑 Нулирай</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('tab-ocr',this)">📷 OCR Фактури <span class="tab-count" id="ocrCountBadge" style="display:none">0</span></div>
+  <div class="tab" onclick="switchTab('tab-nap',this)">📥 Файл А · НАП</div>
+  <div class="tab" onclick="switchTab('tab-entry',this)">✏️ Файл Б · Въвеждане <span class="tab-badge" id="dupBadge" style="display:none">⚠</span></div>
+  <div class="tab" onclick="switchTab('tab-compare',this)">⚡ Сравнение</div>
+</div>
+
+<!-- ══ TAB OCR ══ -->
+<div class="panel active" id="tab-ocr">
+  <div class="ocr-grid">
+
+    <!-- LEFT: controls -->
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="ocr-card">
+        <div class="ocr-card-head">🔑 Anthropic API ключ</div>
+        <div class="ocr-card-body">
+          <div>
+            <label class="ocr-field-label">API Key</label>
+            <div class="ocr-api-row">
+              <input type="password" id="apiKey" class="ocr-input" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+              <button class="btn btn-ghost" onclick="toggleKey()">Покажи</button>
+            </div>
+          </div>
+          <div class="ocr-hint">
+            Ключът се пази само в твоя браузър. Вземи го от <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+          </div>
+        </div>
+      </div>
+
+      <div class="ocr-card">
+        <div class="ocr-card-head">📤 Качи фактури</div>
+        <div class="ocr-card-body">
+          <div class="ocr-drop" id="ocrDrop">
+            <span class="ocr-drop-icon">🧾</span>
+            <div class="ocr-drop-main">Плъзни тук</div>
+            <div class="ocr-drop-sub">PNG · JPG · WEBP · PDF — до 20 MB</div>
+          </div>
+
+          <div class="ocr-src-row three">
+            <button class="btn btn-primary" onclick="openCamera()">📷 Снимай</button>
+            <button class="btn btn-ghost" onclick="openFilePick()">📁 Файл</button>
+            <button class="btn btn-blue" onclick="openDrivePicker()">☁ Drive</button>
+          </div>
+          <input type="file" id="camInput" accept="image/*" capture="environment" style="display:none" onchange="onCamCapture(this)">
+          <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" multiple style="display:none" onchange="ocrFilesPicked(this.files);this.value=''">
+          <label style="display:flex;align-items:center;gap:7px;font-size:11px;color:var(--ink2);cursor:pointer;justify-content:center">
+            <input type="checkbox" id="serialCamChk" checked onchange="serialMode=this.checked" style="width:15px;height:15px;cursor:pointer">
+            Серийно снимане (камерата се отваря пак след всяка снимка)
+          </label>
+          <div class="ocr-drop-sub" style="text-align:center">📷 = камера на телефона · 📁 = галерия/файлове · ☁ = Google Drive<br>При серийно снимане натисни „Отказ" в камерата, за да спреш.</div>
+
+          <div class="ocr-queue" id="ocrQueue"></div>
+
+          <div class="ocr-status" id="ocrStatus">
+            <div class="spinner"></div>
+            <span id="ocrStatusMsg"></span>
+          </div>
+
+          <button class="btn btn-primary" id="btnOcr" onclick="runOcrQueue()" disabled style="width:100%;padding:10px">
+            ✦ Извлечи данните
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: extracted results -->
+    <div class="ocr-card">
+      <div class="ocr-card-head">
+        <span>🗂 Извлечени фактури</span>
+        <span style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn btn-green" onclick="ocrAddAll()">➕ Добави всички към Файл Б</button>
+          <button class="btn btn-ghost" onclick="ocrClear()">Изчисти</button>
+        </span>
+      </div>
+      <div class="table-wrap" style="border:none;box-shadow:none;border-radius:0">
+        <div class="table-scroll" style="max-height:62vh">
+          <table class="data-table" id="ocrTable">
+            <thead><tr>
+              <th>#</th><th>Дата</th><th>№ Фактура</th><th>Издател</th>
+              <th>ЕИК / ДДС №</th><th>Основа</th><th>ДДС</th><th>Общо</th><th>Вал.</th><th></th>
+            </tr></thead>
+            <tbody id="ocrBody">
+              <tr><td colspan="10"><div class="ocr-empty"><span class="ic">📷</span>Качи или снимай фактура, за да започнеш.<br>Извлечените редове се добавят към <strong>Файл Б</strong>.</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ TAB НАП ══ -->
+<div class="panel" id="tab-nap">
+  <div class="section-head"><span>Зареди справка от НАП (xlsx)</span></div>
+  <div id="msgNap"></div>
+  <div class="upload-grid">
+    <div class="drop-zone" id="zoneNap" ondragover="doDrag(event,'zoneNap')" ondragleave="undrag('zoneNap')" ondrop="dropNap(event)">
+      <input type="file" accept=".xlsx,.xls,.csv,.txt,.tsv" onchange="loadNap(this)">
+      <div class="dz-tag nap">НАП · Файл А</div>
+      <div class="dz-icon">🏛️</div>
+      <div class="dz-hint">Плъзни или кликни за качване</div>
+      <div class="dz-name" id="napName">xlsx от НАП портала</div>
+      <div class="dz-info" id="napInfo"></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;font-size:12px;color:var(--ink2);line-height:1.8;">
+      <strong style="color:var(--ink);font-size:13px;">Как да изтеглиш файла от НАП?</strong><br><br>
+      1. Влез в портала на НАП<br>
+      2. Справки → Декларирани продажби<br>
+      3. Избери период и БУЛСТАТ<br>
+      4. Изтегли като <strong>XLSX</strong><br><br>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--ink3);">Програмата автоматично разпознава заглавния ред и колоните.</span>
+    </div>
+  </div>
+  <div id="napPreview" style="display:none">
+    <div class="section-head"><span>Преглед на заредените данни</span></div>
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card s-total"><div class="stat-val" id="napTotal">0</div><div class="stat-lbl">Общо редове</div></div>
+      <div class="stat-card s-match"><div class="stat-val" id="napDocs">0</div><div class="stat-lbl">Уникални доставчици</div></div>
+      <div class="stat-card s-amber"><div class="stat-val" id="napSum">0</div><div class="stat-lbl">Данъчна основа (лв)</div></div>
+    </div>
+    <div class="table-wrap"><div class="table-scroll" style="max-height:40vh">
+      <table class="data-table">
+        <thead><tr><th>ВИН</th><th>Наименование</th><th>Период</th><th>№ Документ</th><th>Тип</th><th>Дата</th><th>Данъчна основа</th><th>ДДС</th></tr></thead>
+        <tbody id="napPreviewBody"></tbody>
+      </table>
+    </div></div>
+  </div>
+</div>
+
+<!-- ══ TAB ВЪВЕЖДАНЕ ══ -->
+<div class="panel" id="tab-entry">
+  <div class="section-head"><span>Файл Б · Ръчно въвеждане на документи</span></div>
+
+  <!-- ARCHIVE STRIP -->
+  <div class="archive-strip">
+    <span class="archive-title">💾 Архив</span>
+    <button class="btn btn-green" onclick="archiveXlsx()">⬇ Запази архив (XLSX)</button>
+    <button class="btn btn-ghost" onclick="archiveCsv()">⬇ Запази архив (CSV)</button>
+    <button class="btn btn-blue" onclick="archiveToDrive()">☁ Запази в Google Drive</button>
+    <div class="restore-zone">
+      <button class="btn btn-blue">📂 Възстанови от архив</button>
+      <input type="file" accept=".xlsx,.xls,.csv,.txt" onchange="restoreFromFile(this)" title="Избери архивен файл">
+    </div>
+    <span class="archive-info" id="archiveInfo"></span>
+  </div>
+
+  <div id="msgEntry"></div>
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="addRow()">＋ Нов ред</button>
+    <button class="btn btn-ghost" onclick="openImport()">📋 Импорт от Excel/CSV</button>
+    <button class="btn btn-ghost" onclick="copyFromNap()">⬇ Копирай от НАП</button>
+    <button class="btn btn-amber" onclick="document.getElementById('diaryInput').click()">📚 Зареди счетоводен дневник</button>
+    <input type="file" id="diaryInput" accept=".xls,.xlsx" style="display:none" onchange="loadPurchaseDiary(this)">
+    <button class="btn btn-green" onclick="saveEntry()">💾 Запази</button>
+    <input class="search-box" id="entrySearch" placeholder="🔍 клиент / ВИН / №..." oninput="renderEntry()" style="width:200px">
+    <span class="rows-count" id="entryCount">0 реда</span>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <label class="sort-lbl">Сортирай по:</label>
+      <select class="sort-sel" id="entrySortField" onchange="renderEntry()">
+        <option value="">— без —</option>
+        <option value="date">Дата издаване</option>
+        <option value="paydate">Дата плащане</option>
+        <option value="period">Период</option>
+        <option value="vin">ВИН</option>
+        <option value="name">Наименование</option>
+        <option value="docnum">№ Документ</option>
+        <option value="base">Основа</option>
+      </select>
+      <button class="sort-dir" id="entrySortDir" onclick="toggleEntrySort()">↑ Възх.</button>
+      <button class="btn btn-ghost" onclick="clearEntry()">Изчисти всички</button>
+    </div>
+  </div>
+  <div id="dupAlert" style="display:none" class="msg warn"><strong>⚠ Дублирани фактури (маркирани в лилаво):</strong><div id="dupList" style="margin-top:6px;font-family:var(--mono);font-size:11px;line-height:1.7"></div></div>
+  <div class="me-wrap">
+    <table class="me-table">
+      <thead><tr>
+        <th style="width:26px">#</th>
+        <th style="width:26px">!</th>
+        <th style="min-width:108px">ВИН</th>
+        <th style="min-width:155px">Наименование</th>
+        <th style="min-width:72px">Период</th>
+        <th style="min-width:112px">№ Документ</th>
+        <th style="min-width:120px">Тип документ</th>
+        <th style="min-width:96px">Дата издаване</th>
+        <th style="min-width:100px">Данъчна основа</th>
+        <th style="min-width:82px">ДДС</th>
+        <th style="min-width:112px">Нач. плащане</th>
+        <th style="min-width:96px">Дата плащане</th>
+        <th style="min-width:135px">Коментар</th>
+        <th style="width:30px"></th>
+      </tr></thead>
+      <tbody id="entryBody"></tbody>
+    </table>
+  </div>
+  <div id="entryTotals" style="display:none;margin:8px 0 0;padding:9px 14px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);font-family:var(--mono);font-size:13px;gap:20px;flex-wrap:wrap;align-items:center;box-shadow:var(--shadow)"></div>
+  <div class="hint">💡 <strong>Дублирани фактури</strong> се маркират автоматично в лилаво (ВИН + №). &nbsp;|&nbsp; Tab/Enter — следващо поле; от <strong>последното поле на последния ред</strong> — нов ред. &nbsp;|&nbsp; При въвеждане на познат <strong>ВИН</strong> се попълват автоматично името, коментарът и начинът на плащане. &nbsp;|&nbsp; Данните се запазват автоматично в браузъра.<br>
+  📦 <strong>Архив</strong> — запази редовно резервно копие с „Запази архив". При нужда го зареди обратно с „Възстанови от архив".</div>
+</div>
+
+<!-- ══ TAB СРАВНЕНИЕ ══ -->
+<div class="panel" id="tab-compare">
+  <div id="msgCompare"></div>
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="runCompare()">⚡ Сравни сега</button>
+    <button class="btn btn-ghost" onclick="exportDiffCsv()">⬇ CSV · Само разлики</button>
+    <button class="btn btn-ghost" onclick="exportAllCsv()">⬇ CSV · Всички</button>
+  </div>
+  <div id="compareStats" style="display:none">
+    <div class="stats-grid">
+      <div class="stat-card s-total"><div class="stat-val" id="stA">0</div><div class="stat-lbl">Редове А (НАП)</div></div>
+      <div class="stat-card s-total"><div class="stat-val" id="stB">0</div><div class="stat-lbl">Редове Б (твои)</div></div>
+      <div class="stat-card s-diff"><div class="stat-val" id="stDiff">0</div><div class="stat-lbl">С разлики</div></div>
+      <div class="stat-card s-amber"><div class="stat-val" id="stOnly">0</div><div class="stat-lbl">Само в едното</div></div>
+      <div class="stat-card s-match"><div class="stat-val" id="stMatch">0</div><div class="stat-lbl">Съвпадат</div></div>
+    </div>
+    <div class="toolbar">
+      <button class="filter-chip active" onclick="setFilter('all',this)">Всички</button>
+      <button class="filter-chip f-diff" onclick="setFilter('diff',this)">⚠ Разлики</button>
+      <button class="filter-chip f-ona" onclick="setFilter('only_a',this)">Липсва при мен</button>
+      <button class="filter-chip f-ona" onclick="setFilter('only_b',this)">Липсва в НАП</button>
+      <button class="filter-chip f-match" onclick="setFilter('match',this)">✓ Съвпадат</button>
+      <button class="filter-chip f-unpaid" onclick="setFilter('unpaid',this)">💳 Неплатени</button>
+      <input class="search-box" id="searchBox" placeholder="🔍 ВИН / фирма / №..." oninput="renderCompare()">
+    </div>
+    <div class="sort-row">
+      <span class="sort-lbl">Подреди по:</span>
+      <select class="sort-sel" id="cmpSortField" onchange="applyCmpDropSort()">
+        <option value="">— без —</option>
+        <option value="date">Дата издаване</option>
+        <option value="paydate">Дата плащане</option>
+        <option value="vin">ВИН</option>
+        <option value="name">Наименование</option>
+        <option value="docnum">№ Документ</option>
+        <option value="period">Период</option>
+        <option value="baseA">Основа НАП</option>
+        <option value="dBase">Δ Основа</option>
+      </select>
+      <button class="sort-dir" id="cmpSortDir" onclick="toggleCmpSort()">↑ Възх.</button>
+      <span class="sort-lbl" style="margin-left:8px">Период:</span>
+      <select class="sort-sel" id="filterPeriod" onchange="renderCompare()"><option value="">Всички</option></select>
+      <span class="sort-lbl">Плащане:</span>
+      <select class="sort-sel" id="filterPayment" onchange="renderCompare()">
+        <option value="">Всички</option>
+        <option value="Банка">Банка</option>
+        <option value="Брой">Брой</option>
+        <option value="Карта">Карта</option>
+        <option value="ПОС терминал">ПОС терминал</option>
+        <option value="Друго">Друго</option>
+      </select>
+    </div>
+    <div class="table-wrap"><div class="table-scroll">
+      <table class="data-table" id="cmpTable">
+        <thead><tr>
+          <th onclick="thSort('_si')">#</th>
+          <th onclick="thSort('vin')">ВИН</th>
+          <th onclick="thSort('name')">Наименование</th>
+          <th onclick="thSort('period')">Период</th>
+          <th onclick="thSort('docnum')">№ Документ</th>
+          <th onclick="thSort('doctype')">Тип</th>
+          <th onclick="thSort('date')">Дата издаване</th>
+          <th onclick="thSort('baseA')">Осн. НАП</th>
+          <th onclick="thSort('baseB')">Осн. Моя</th>
+          <th onclick="thSort('dBase')">Δ Основа</th>
+          <th onclick="thSort('vatA')">ДДС НАП</th>
+          <th onclick="thSort('vatB')">ДДС Моя</th>
+          <th onclick="thSort('dVat')">Δ ДДС</th>
+          <th onclick="thSort('payment')">Нач. плащане</th>
+          <th onclick="thSort('paydate')">Дата плащане</th>
+          <th>Коментар</th>
+          <th onclick="thSort('status')">Статус</th>
+        </tr></thead>
+        <tbody id="compareBody"></tbody>
+      </table>
+    </div></div>
+    <div class="hint">💡 Кликни заглавие за сортиране. &nbsp;|&nbsp; <strong>Нач. плащане</strong>, <strong>Дата плащане</strong> и <strong>Коментар</strong> се редактират директно в таблицата.</div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-bg" id="importModal">
+  <div class="modal">
+    <h3>📋 Импорт от Excel/CSV</h3>
+    <p>Копирай редовете от Excel или CSV и постави тук. Разделители: Tab или точка и запетая:<br>
+    <code>ВИН ; Наименование ; Период ; №Документ ; Тип ; Дата ; Основа ; ДДС ; Нач.плащане ; Дата.плащане ; Коментар</code></p>
+    <textarea id="importText" placeholder="Постави данни тук..."></textarea>
+    <div class="modal-row">
+      <button class="btn btn-ghost" onclick="closeImport()">Отказ</button>
+      <button class="btn btn-primary" onclick="doImport()">Импортирай</button>
+    </div>
+  </div>
+</div>
+
+<!-- GOOGLE DRIVE SETTINGS MODAL -->
+<div class="modal-bg" id="gdModal">
+  <div class="modal">
+    <h3>☁ Google Drive — настройка</h3>
+    <p>За да избираш снимки директно от Google Drive на компютъра, въведи свои Google идентификатори (еднократно, пазят се само в браузъра).</p>
+    <div class="msg info" style="margin-bottom:14px">
+      📱 <strong>На телефон не е нужна настройка!</strong> Натисни „📁 Файл" и системният избор вече показва Google Drive, Снимки и Камера.
+    </div>
+    <label>Google Client ID</label>
+    <input type="text" id="gdClientId" placeholder="xxxxx.apps.googleusercontent.com" spellcheck="false">
+    <label>Google API Key</label>
+    <input type="text" id="gdApiKey" placeholder="AIza..." spellcheck="false">
+    <details style="margin-bottom:6px">
+      <summary style="font-size:12px;cursor:pointer;color:var(--blue);font-weight:600">Как да ги взема? (стъпки)</summary>
+      <ol>
+        <li>Отвори <code>console.cloud.google.com</code> и създай проект.</li>
+        <li>APIs &amp; Services → Library → включи <strong>Google Drive API</strong> и <strong>Google Picker API</strong>.</li>
+        <li>Credentials → Create credentials → <strong>API key</strong> → копирай в „API Key".</li>
+        <li>Credentials → Create credentials → <strong>OAuth client ID</strong> → тип <em>Web application</em>.</li>
+        <li>В „Authorized JavaScript origins" добави адреса на сайта (напр. <code>https://потребител.github.io</code>).</li>
+        <li>Копирай Client ID в полето горе.</li>
+      </ol>
+    </details>
+    <div class="modal-row">
+      <button class="btn btn-ghost" onclick="closeGdSettings()">Отказ</button>
+      <button class="btn btn-primary" onclick="saveGdSettings()">Запази</button>
+    </div>
+  </div>
+</div>
+
+<!-- GUARD / DELETE CONFIRM MODAL -->
+<div class="modal-bg" id="guardModal">
+  <div class="modal" style="width:460px">
+    <h3 id="guardTitle">Сигурен ли си?</h3>
+    <p id="guardMsg"></p>
+    <div class="msg info" style="margin-bottom:6px">💡 Препоръчително: свали резервно копие на Файл Б, преди да изтриеш.</div>
+    <div class="modal-row" style="flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="guardCancel()">Отказ</button>
+      <button class="btn btn-amber" onclick="guardProceed(false)">Продължи без архив</button>
+      <button class="btn btn-green" id="guardArch" onclick="guardProceed(true)">⬇ Свали архив и продължи</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ══════════════════════════ STATE ══════════════════════════
+let napData=[], entryData=[], compareRows=[];
+let currentFilter='all', cmpSortCol='', cmpSortAsc=true, entrySortAsc=true;
+const SK='nap_entry_v3', SN='nap_file_v1';
+const DOCTYPES=['01 - Фактура','01 - Фактура VOP','02 - Дебитно известие','03 - Кредитно известие','07 - Митническа декларация','09 - Протокол'];
+const PAYMENTS=['Банка','Брой','Карта','ПОС терминал','Друго'];
+const ARCH_HEAD=['ВИН','Наименование','Период','№ Документ','Тип','Дата','Данъчна основа','ДДС','Нач. плащане','Дата плащане','Коментар'];
+const ARCH_KEYS=['vin','name','period','docnum','doctype','date','base','vat','payment','paydate','comment'];
+
+// OCR state
+let ocrQueue=[];          // {file, base64, mediaType, name, status:'pending'|'done'|'err'}
+let ocrRows=[];           // extracted invoices (staging)
+const OCR_KEY_LS='ocr_api_key', OCR_STAGE_LS='ocr_staging';
+
+window.addEventListener('DOMContentLoaded',()=>{
+  pdLoad();
+  loadFromStorage(); renderEntry(); updateArchiveInfo();
+  pdMergeAll();
+  initOcr();
+});
+
+// ══════════════════════════ TABS ══════════════════════════
+function switchTab(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active'); el.classList.add('active');
+}
+
+// ══════════════════════════ STORAGE ══════════════════════════
+function saveEntry(){ try{localStorage.setItem(SK,JSON.stringify(entryData));showEntryMsg('✓ Данните са запазени.','ok');}catch(e){} }
+function loadFromStorage(){
+  try{const s=localStorage.getItem(SK);if(s)entryData=JSON.parse(s);}catch(e){}
+  try{const n=localStorage.getItem(SN);if(n){napData=JSON.parse(n);renderNapPreview();}}catch(e){}
+}
+function clearStorage(){
+  guardClear(doClearStorage,'Нулиране на всички данни','Ще се изтрият НАП + Файл Б + извлечените фактури от браузъра. Това действие е необратимо.');
+}
+function doClearStorage(){
+  localStorage.removeItem(SK);localStorage.removeItem(SN);localStorage.removeItem(OCR_STAGE_LS);
+  napData=[];entryData=[];compareRows=[];ocrRows=[];ocrQueue=[];
+  renderEntry();renderNapPreview();renderOcr();renderOcrQueue();
+  document.getElementById('compareStats').style.display='none';
+  document.getElementById('napPreview').style.display='none';
+  updateArchiveInfo();
+}
+function autoSave(){
+  try{localStorage.setItem(SK,JSON.stringify(entryData));}catch(e){}
+  document.getElementById('entryCount').textContent=entryData.length+' реда';
+  updateArchiveInfo();
+}
+function updateArchiveInfo(){
+  const el=document.getElementById('archiveInfo');
+  if(!entryData.length){el.textContent='';return;}
+  const now=new Date().toLocaleString('bg-BG');
+  el.textContent=`${entryData.length} реда · последно запазено: ${now}`;
+}
+
+// ══════════════════════════ ARCHIVE EXPORT ══════════════════════════
+function archiveXlsx(){
+  if(!entryData.length){showEntryMsg('Няма данни за архивиране.','err');return;}
+  const wb=XLSX.utils.book_new();
+  const rows=[ARCH_HEAD,...entryData.map(r=>archRowXlsx(r))];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:14},{wch:30},{wch:8},{wch:18},{wch:20},{wch:12},{wch:14},{wch:10},{wch:14},{wch:14},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ws,'Архив Файл Б');
+  XLSX.writeFile(wb,curDateStr()+'_arhiv_fail.xlsx');
+  showEntryMsg('✓ Архивът е запазен като XLSX.','ok');
+}
+function archiveCsv(){
+  if(!entryData.length){showEntryMsg('Няма данни за архивиране.','err');return;}
+  const rows=[ARCH_HEAD,...entryData.map(r=>ARCH_KEYS.map(k=>String(r[k]||'')))];
+  const blob=new Blob(['\uFEFF'+rows.map(r=>r.join(';')).join('\n')],{type:'text/csv;charset=utf-8;'});
+  dl(blob,curDateStr()+'_arhiv_fail.csv');
+  showEntryMsg('✓ Архивът е запазен като CSV.','ok');
+}
+
+// ══════════════════════════ ARCHIVE RESTORE ══════════════════════════
+function restoreFromFile(inp){
+  if(!inp.files[0])return;
+  const file=inp.files[0];
+  const nm=file.name.toLowerCase();
+  if(nm.endsWith('.xlsx')||nm.endsWith('.xls')) restoreXlsx(file);
+  else restoreCsv(file);
+  inp.value='';
+}
+function restoreXlsx(file){
+  const r=new FileReader();
+  r.onload=e=>{try{
+    const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+    const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+    parseRestoredRows(raw);
+  }catch(err){showEntryMsg('Грешка при четене на архива: '+err.message,'err');}};
+  r.readAsArrayBuffer(file);
+}
+function restoreCsv(file){
+  const r=new FileReader();
+  r.onload=e=>{
+    const text=e.target.result;
+    const sep=[';',',','\t'].map(s=>({s,c:(text.match(new RegExp('\\'+s,'g'))||[]).length})).sort((a,b)=>b.c-a.c)[0].s;
+    const raw=text.split(/\r?\n/).map(l=>l.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,'')));
+    parseRestoredRows(raw);
+  };
+  r.readAsText(file,'utf-8');
+}
+function parseRestoredRows(raw){
+  let hi=-1;
+  for(let i=0;i<Math.min(raw.length,5);i++){
+    const r=raw[i].map(c=>String(c).toLowerCase());
+    if(r.some(c=>c.includes('вин')||c.includes('vin'))&&r.some(c=>c.includes('документ')||c.includes('doc'))){hi=i;break;}
+  }
+  if(hi<0&&raw.length>0)hi=0;
+  const headers=raw[hi].map(c=>String(c).toLowerCase().trim());
+  function fc(keys){for(const k of keys){const i=headers.findIndex(h=>h.includes(k));if(i>=0)return i;}return -1;}
+  const map={
+    vin:fc(['вин','vin','идент','булстат']),
+    name:fc(['наименование','name','доставчик']),
+    period:fc(['период','period']),
+    docnum:fc(['документ','doc','номер','№']),
+    doctype:fc(['тип','type']),
+    date:fc(['дата издаване','дата на издаване','дата','date']),
+    base:fc(['основа','base','данъчна']),
+    vat:fc(['ддс','vat','dds']),
+    payment:fc(['плащане','payment','нач']),
+    paydate:fc(['дата плащане','paydate','дата на плащ']),
+    comment:fc(['коментар','comment','бележка']),
+  };
+  const restored=raw.slice(hi+1).filter(r=>r.some(c=>c&&c.trim())).map(r=>{
+    const obj={};
+    for(const[k,i]of Object.entries(map))obj[k]=i>=0?(r[i]||''):'';
+    obj.base=normAmt(obj.base);obj.vat=normAmt(obj.vat);
+    obj.date=normDate(obj.date);obj.paydate=normDate(obj.paydate);
+    return obj;
+  }).filter(r=>r.vin||r.docnum);
+  if(!restored.length){showEntryMsg('Не намирам данни в архивния файл.','err');return;}
+  if(entryData.length&&!confirm(`Намерени ${restored.length} реда в архива. Текущите данни (${entryData.length} реда) ще бъдат заменени. Продължи?`))return;
+  entryData=restored;
+  pdMergeAll();
+  renderEntry();autoSave();
+  showEntryMsg(`✓ Възстановени ${restored.length} реда от архива.`,'ok');
+}
+
+// ══════════════════════════ NAP FILE ══════════════════════════
+const COLS={
+  vin:['идент. № на доставчика вин','вин','идент','булстат','еик','vat'],
+  name:['наименование на доставчика','наименование','доставчик','name'],
+  period:['период','period'],
+  docnum:['№ на документ','№','номер','document','фактура'],
+  doctype:['тип на документ','тип','type'],
+  date:['дата на издаване','дата','date'],
+  base:['0210: сума на до','0210','данъчна основа','сума на до','данъчна'],
+  vat:['0220: начислен ддс','0220','ддс','начислен ддс'],
+};
+function findCol(headers,keys){const h=headers.map(c=>String(c).toLowerCase().trim());for(const k of keys){const i=h.findIndex(c=>c.includes(k));if(i>=0)return i;}return -1;}
+function buildMap(headers){const m={};for(const[f,vs]of Object.entries(COLS))m[f]=findCol(headers,vs);return m;}
+function findHeaderRow(raw){for(let i=0;i<raw.length;i++){const r=raw[i].map(c=>String(c).toLowerCase().trim());if(r.some(c=>c.includes('идент')||c.includes('вин'))&&r.some(c=>c.includes('данъчна')||c.includes('0210')||c.includes('0220')))return i;}return -1;}
+function gv(row,map,f){const i=map[f];return i>=0&&row[i]!==undefined?String(row[i]).trim():'';}
+function nv(s){const n=parseNum(s);return n===null?0:n;}
+
+function doDrag(e,id){e.preventDefault();document.getElementById(id).classList.add('drag');}
+function undrag(id){document.getElementById(id).classList.remove('drag');}
+function dropNap(e){e.preventDefault();undrag('zoneNap');const f=e.dataTransfer.files[0];if(f)processNap(f);}
+function loadNap(inp){if(inp.files[0])processNap(inp.files[0]);}
+function processNap(file){
+  const r=new FileReader();
+  r.onload=e=>{try{
+    const wb=XLSX.read(e.target.result,{type:'array',cellText:true});
+    const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+    const hi=findHeaderRow(raw);
+    if(hi<0)return showMsg('msgNap','Не намирам заглавния ред. Провери файла.','err');
+    const map=buildMap(raw[hi]);
+    napData=raw.slice(hi+1).filter(r=>r.some(c=>c!==''&&c!==null)&&r[map.vin]!=null&&String(r[map.vin]).trim()!='').map(r=>({
+      vin:gv(r,map,'vin'),name:gv(r,map,'name'),period:gv(r,map,'period'),docnum:gv(r,map,'docnum'),
+      doctype:gv(r,map,'doctype'),date:gv(r,map,'date'),base:nv(gv(r,map,'base')),vat:nv(gv(r,map,'vat'))
+    }));
+    document.getElementById('napName').textContent=file.name;
+    document.getElementById('napInfo').textContent=napData.length+' реда заредени';
+    document.getElementById('zoneNap').classList.add('loaded');
+    try{localStorage.setItem(SN,JSON.stringify(napData));}catch(_){}
+    renderNapPreview();
+    pdMergeAll();
+    showMsg('msgNap','✓ Заредени '+napData.length+' реда от НАП файла.','ok');
+  }catch(err){showMsg('msgNap','Грешка: '+err.message,'err');}};
+  r.readAsArrayBuffer(file);
+}
+function renderNapPreview(){
+  if(!napData.length){document.getElementById('napPreview').style.display='none';return;}
+  document.getElementById('napPreview').style.display='block';
+  document.getElementById('napTotal').textContent=napData.length;
+  document.getElementById('napDocs').textContent=new Set(napData.map(r=>r.vin)).size;
+  document.getElementById('napSum').textContent=fmt(napData.reduce((a,r)=>a+r.base,0));
+  document.getElementById('napPreviewBody').innerHTML=napData.map(r=>`<tr>
+    <td class="mono">${esc(r.vin)}</td><td class="wide">${esc(r.name)}</td><td class="mono">${esc(r.period)}</td>
+    <td class="mono">${esc(r.docnum)}</td><td>${esc(r.doctype)}</td><td class="mono">${esc(r.date)}</td>
+    <td class="mono val-a">${fmt(r.base)}</td><td class="mono val-a">${fmt(r.vat)}</td></tr>`).join('');
+}
+
+// ══════════════════════════ ENTRY (Файл Б) ══════════════════════════
+function dupKey(r){return String(r.docnum||'').trim().replace(/^0+/,'')+'|||'+String(r.vin||'').trim();}
+function getDups(){const cnt={};entryData.forEach(r=>{const k=dupKey(r);if(k!=='|||')cnt[k]=(cnt[k]||0)+1;});return new Set(Object.entries(cnt).filter(([,v])=>v>1).map(([k])=>k));}
+function getDupDetails(){
+  const m={};
+  entryData.forEach(r=>{const k=dupKey(r);if(k==='|||')return;if(!m[k])m[k]={docnum:r.docnum||'',name:r.name||'',count:0};m[k].count++;if(!m[k].name&&r.name)m[k].name=r.name;});
+  return Object.values(m).filter(x=>x.count>1);
+}
+function updateDupUI(dups){
+  const details=getDupDetails();const has=details.length>0;
+  document.getElementById('dupAlert').style.display=has?'block':'none';
+  document.getElementById('dupBadge').style.display=has?'inline':'none';
+  const list=document.getElementById('dupList');
+  if(list)list.innerHTML=details.map(d=>`• №${esc(d.docnum)||'—'} · ${esc(d.name)||'(без име)'} <span style="color:var(--dup)">(${d.count} пъти)</span>`).join('<br>');
+}
+
+function addRow(p={}){
+  entryData.push({vin:p.vin||'',name:p.name||'',period:p.period||curPeriod(),docnum:p.docnum||'',
+    doctype:p.doctype||'01 - Фактура',date:p.date||'',base:p.base!==undefined?normAmt(p.base):'',
+    vat:p.vat!==undefined?normAmt(p.vat):'',payment:p.payment||'Банка',paydate:p.paydate||'',comment:p.comment||''});
+  const se=document.getElementById('entrySearch');if(se)se.value='';
+  renderEntry();autoSave();
+  setTimeout(()=>{const rows=document.querySelectorAll('#entryBody tr');if(rows.length){const inp=rows[rows.length-1].querySelector('.me-input');if(inp)inp.focus();}},50);
+}
+function curPeriod(){const d=new Date();return String(d.getFullYear())+String(d.getMonth()+1).padStart(2,'0');}
+function curDateStr(){const d=new Date();return String(d.getFullYear())+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');}
+// Парсване на сума: разпознава „76,10", „76.10", „1 234,56", „1.234,56", „1,234.56" → число
+function parseNum(v){
+  if(v===null||v===undefined)return null;
+  let s=String(v).replace(/[\s\u00A0]/g,'');
+  if(!s)return null;
+  s=s.replace(/[^0-9.,\-]/g,'');
+  if(!s||s==='-'||s==='.'||s===',')return null;
+  const lc=s.lastIndexOf(','),ld=s.lastIndexOf('.');
+  let dec=-1;
+  if(lc>-1&&ld>-1)dec=Math.max(lc,ld);
+  else if(lc>-1)dec=lc;
+  else if(ld>-1)dec=ld;
+  const neg=s.trim().startsWith('-');
+  if(dec>-1){
+    const intPart=s.slice(0,dec).replace(/[.,\-]/g,'');
+    const fracPart=s.slice(dec+1).replace(/[.,]/g,'');
+    s=(neg?'-':'')+intPart+'.'+fracPart;
+  }else{s=(neg?'-':'')+s.replace(/[.,\-]/g,'');}
+  const n=parseFloat(s);
+  return isNaN(n)?null:n;
+}
+// Форматиране на сума за показване/въвеждане: запетая, 2 знака („76,10")
+function fmtComma(v){
+  if(v===null||v===undefined||v==='')return'';
+  const n=typeof v==='number'?v:parseNum(v);
+  if(n===null)return'';
+  return n.toFixed(2).replace('.',',');
+}
+// Нормализира стойност за съхранение в entryData (винаги „xx,xx" или празно)
+function normAmt(v){if(v===''||v===null||v===undefined)return'';const n=parseNum(v);return n===null?'':fmtComma(n);}
+// Ред за XLSX архив: base/vat като истински числа (сумируеми), останалото като текст
+function archRowXlsx(r){return ARCH_KEYS.map(k=>{if(k==='base'||k==='vat'){const n=parseNum(r[k]);return n===null?'':n;}return r[k]||'';});}
+function pad2(n){return String(n).padStart(2,'0');}
+// Нормализира дата към „дд.мм.гггг": разпознава Excel-дата (обект/сериен номер), ISO и текст
+function normDate(v){
+  if(v===null||v===undefined||v==='')return'';
+  if(v instanceof Date&&!isNaN(v))return pad2(v.getDate())+'.'+pad2(v.getMonth()+1)+'.'+v.getFullYear();
+  if(typeof v==='number'&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*86400000));return pad2(d.getUTCDate())+'.'+pad2(d.getUTCMonth()+1)+'.'+d.getUTCFullYear();}
+  const s=String(v).trim();const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[3]+'.'+m[2]+'.'+m[1];
+  return s;
+}
+// Дата → сортируемо число ггггммдд (за правилно подреждане по дата)
+function dnum(s){const m=String(s||'').match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/);if(!m)return 0;let y=m[3];if(y.length===2)y='20'+y;return +(y+pad2(m[2])+pad2(m[1]));}
+// Указател на партньори (ВИН→име), пълни се автоматично от НАП, счетоводен дневник и въведени редове
+let partnerDir={};
+function pdKey(v){return vinNorm(v);}
+function pdLoad(){try{const s=localStorage.getItem('partner_dir_v1');if(s)partnerDir=JSON.parse(s);}catch(e){}}
+function pdSave(){try{localStorage.setItem('partner_dir_v1',JSON.stringify(partnerDir));}catch(e){}}
+function pdMerge(vin,name){const k=pdKey(vin);if(!k)return;name=String(name||'').trim();if(name&&!partnerDir[k])partnerDir[k]=name;}
+function pdMergeAll(){entryData.forEach(r=>pdMerge(r.vin,r.name));(napData||[]).forEach(r=>pdMerge(r.vin,r.name));pdSave();}
+function pdLookup(vin){return partnerDir[pdKey(vin)]||'';}
+function deleteRow(i){entryData.splice(i,1);renderEntry();autoSave();}
+// Авто-попълване по ВИН: взима НАЙ-СКОРОШНИЯ предишен ред със същия ВИН (само мои въведени редове)
+function vinAutofill(i){
+  const vin=String(entryData[i].vin||'').trim();
+  if(!vin)return;
+  let src=null;
+  for(let j=0;j<entryData.length;j++){
+    if(j===i)continue;
+    if(String(entryData[j].vin||'').trim()===vin)src=entryData[j]; // последният съвпадащ остава
+  }
+  if(!src)return afterAutofill();
+  if(!String(entryData[i].name||'').trim()&&src.name)entryData[i].name=src.name;
+  if(!String(entryData[i].comment||'').trim()&&src.comment)entryData[i].comment=src.comment;
+  // плащане: попълва се само ако още е по подразбиране „Банка" и източникът има друго
+  if((entryData[i].payment||'Банка')==='Банка'&&src.payment)entryData[i].payment=src.payment;
+  afterAutofill();
+  function afterAutofill(){
+    // резервно: указател на партньори (НАП + счетоводен дневник + история)
+    if(!String(entryData[i].name||'').trim()){const nm=pdLookup(entryData[i].vin);if(nm)entryData[i].name=nm;}
+  }
+}
+function updateRow(i,field,val){
+  entryData[i][field]=val;
+  if(field==='vin')vinAutofill(i);
+  if(field==='name'||field==='vin'){pdMerge(entryData[i].vin,entryData[i].name);pdSave();}
+  if(field==='date'){
+    const cur=String(entryData[i].period||'').trim();
+    if(!cur||cur===curPeriod()){const p=dateToPeriod(val);if(p)entryData[i].period=p;} // Период от датата (презаписваем)
+  }
+  renderEntry();autoSave();
+}
+// Въвеждане на сума: нормализира към „xx,xx" при напускане на полето
+function updateNum(i,field,val){
+  entryData[i][field]=normAmt(val);
+  renderEntry();autoSave();
+}
+function toggleEntrySort(){entrySortAsc=!entrySortAsc;document.getElementById('entrySortDir').textContent=entrySortAsc?'↑ Възх.':'↓ Низх.';renderEntry();}
+function getSortedEntry(){
+  const field=document.getElementById('entrySortField').value;
+  const indexed=entryData.map((r,i)=>({...r,_orig:i}));
+  if(!field)return indexed;
+  return[...indexed].sort((a,b)=>{
+    let av=a[field]||'',bv=b[field]||'';
+    if(field==='base'||field==='vat'){av=nv(av);bv=nv(bv);}
+    else if(field==='date'||field==='paydate'){av=dnum(av);bv=dnum(bv);}
+    else{av=String(av).toLowerCase();bv=String(bv).toLowerCase();}
+    const c=av<bv?-1:av>bv?1:0;return entrySortAsc?c:-c;
+  });
+}
+function renderEntry(){
+  const dups=getDups();updateDupUI(dups);
+  const se=document.getElementById('entrySearch');
+  const q=(se?se.value:'').toLowerCase().trim();
+  let sorted=getSortedEntry();
+  if(q)sorted=sorted.filter(r=>[r.vin,r.name,r.docnum,r.comment,r.period].join(' ').toLowerCase().includes(q));
+  document.getElementById('entryCount').textContent=q?`${sorted.length} от ${entryData.length} реда`:`${entryData.length} реда`;
+  document.getElementById('entryBody').innerHTML=sorted.map((r,si)=>{
+    const i=r._orig;
+    const isDup=dups.has(dupKey(r))&&dupKey(r)!=='|||';
+    const dtOpts=DOCTYPES.map(t=>`<option${t===r.doctype?' selected':''}>${esc(t)}</option>`).join('');
+    const pmOpts=PAYMENTS.map(t=>`<option${t===r.payment?' selected':''}>${esc(t)}</option>`).join('');
+    return`<tr class="${isDup?'row-dup':''}">
+      <td style="color:var(--ink3);font-family:var(--mono);font-size:10px;padding:5px;text-align:center">${si+1}</td>
+      <td style="text-align:center;padding:2px">${isDup?`<span style="color:var(--dup);font-size:13px;cursor:help" title="Дублиран номер!">⚠</span>`:`<span style="color:var(--border)">·</span>`}</td>
+      <td><input class="me-input${isDup?' hi':''}" value="${esc(r.vin)}" placeholder="ВИН" onchange="updateRow(${i},'vin',this.value)" onkeydown="tabNext(event,this)"></td>
+      <td><input class="me-input" value="${esc(r.name)}" placeholder="Наименование" onchange="updateRow(${i},'name',this.value)" onkeydown="tabNext(event,this)"></td>
+      <td><input class="me-input" value="${esc(r.period)}" placeholder="202603" onchange="updateRow(${i},'period',this.value)" onkeydown="tabNext(event,this)" style="width:68px"></td>
+      <td><input class="me-input${isDup?' hi':''}" value="${esc(r.docnum)}" placeholder="№ фактура" onchange="updateRow(${i},'docnum',this.value)" onkeydown="tabNext(event,this)"></td>
+      <td><select class="me-select" onchange="updateRow(${i},'doctype',this.value)">${dtOpts}</select></td>
+      <td><input class="me-input" value="${esc(r.date)}" placeholder="дд.мм.гггг" onchange="updateRow(${i},'date',this.value)" onkeydown="tabNext(event,this)" style="width:92px"></td>
+      <td><input class="me-input num" value="${esc(r.base)}" placeholder="0,00" onchange="updateNum(${i},'base',this.value)" onkeydown="tabNext(event,this)" style="width:92px"></td>
+      <td><input class="me-input num" value="${esc(r.vat)}" placeholder="0,00" onchange="updateNum(${i},'vat',this.value)" onkeydown="tabNext(event,this)" style="width:78px"></td>
+      <td><select class="me-select" onchange="updateRow(${i},'payment',this.value)" style="width:108px">${pmOpts}</select></td>
+      <td><input class="me-input" value="${esc(r.paydate)}" placeholder="дд.мм.гггг" onchange="updateRow(${i},'paydate',this.value)" onkeydown="tabNext(event,this)" style="width:90px"></td>
+      <td><input class="me-input" value="${esc(r.comment)}" placeholder="Бележка..." onchange="updateRow(${i},'comment',this.value)" onkeydown="tabNext(event,this)" style="width:130px"></td>
+      <td><button class="me-del" onclick="deleteRow(${i})" title="Изтрий">✕</button></td>
+    </tr>`;
+  }).join('');
+  // Сборове (т.Б) — върху текущо показаните редове
+  const tot=document.getElementById('entryTotals');
+  if(tot){
+    if(entryData.length){
+      let tb=0,tv=0;sorted.forEach(r=>{tb+=parseNum(r.base)||0;tv+=parseNum(r.vat)||0;});
+      const filt=q?' (филтрирани)':'';
+      tot.style.display='flex';
+      tot.innerHTML=`<span style="color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;font-size:10px;font-family:var(--font);font-weight:700">Σ Сборове${filt}</span>`+
+        `<span>Основа: <strong style="color:var(--blue)">${fmtComma(tb)} лв</strong></span>`+
+        `<span>ДДС: <strong style="color:var(--amber)">${fmtComma(tv)} лв</strong></span>`+
+        `<span>Общо: <strong style="color:var(--accent2)">${fmtComma(tb+tv)} лв</strong></span>`+
+        `<span style="color:var(--ink3)">${sorted.length} ${sorted.length===1?'ред':'реда'}</span>`;
+    }else tot.style.display='none';
+  }
+}
+function tabNext(e,el){
+  if(e.key==='Enter'||e.key==='Tab'){
+    const all=[...document.querySelectorAll('#entryBody .me-input,#entryBody .me-select')];
+    const i=all.indexOf(el);
+    // т.А: от последното поле на последния ред → нов ред (само без търсене/сортиране и не при Shift+Tab)
+    if(i===all.length-1&&!e.shiftKey){
+      const q=(document.getElementById('entrySearch')||{}).value||'';
+      const sf=(document.getElementById('entrySortField')||{}).value||'';
+      if(!q.trim()&&!sf){
+        e.preventDefault();
+        const last=entryData.length-1;
+        if(last>=0)entryData[last].comment=el.value; // запазваме написания коментар преди пре-рендер
+        addRow();
+        return;
+      }
+      return;
+    }
+    if(e.key==='Enter')e.preventDefault();
+    if(i<all.length-1)all[i+1].focus();
+  }
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function clearEntry(){guardClear(doClearEntry,'Изчистване на Файл Б','Ще се изтрият всички въведени редове във Файл Б.');}
+function doClearEntry(){entryData=[];renderEntry();autoSave();}
+function copyFromNap(){
+  if(!napData.length){showEntryMsg('Няма заредени данни от НАП.','err');return;}
+  if(entryData.length&&!confirm('Ще добави редовете от НАП. Продължи?'))return;
+  napData.forEach(r=>addRow({...r,payment:'Банка',paydate:'',comment:''}));
+  showEntryMsg(`✓ Добавени ${napData.length} реда от НАП.`,'ok');
+}
+// ══════ Счетоводен дневник на покупките (Приложение 11, .xls/.xlsx от счетоводството) ══════
+function mapDiaryType(t){
+  const s=String(t||'').toLowerCase();
+  if(s.includes('кредит')||s==='ки')return '03 - Кредитно известие';
+  if(s.includes('дебит')||s==='ди')return '02 - Дебитно известие';
+  if(s.includes('прото'))return '09 - Протокол';
+  if(s.includes('митн'))return '07 - Митническа декларация';
+  return '01 - Фактура';
+}
+function loadPurchaseDiary(inp){
+  const file=inp.files[0];if(!file)return;inp.value='';
+  const r=new FileReader();
+  r.onload=e=>{try{
+    const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+    let sheetName=wb.SheetNames.find(n=>/purchase/i.test(n))||wb.SheetNames.find(n=>/покупк/i.test(n))||wb.SheetNames[0];
+    const raw=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
+    // данъчен период от заглавието „Данъчен период MM.YYYY"
+    let period='';
+    for(let i=0;i<Math.min(raw.length,8);i++){const t=raw[i].map(c=>String(c)).join(' ');const m=t.match(/период\s*(\d{2})[.\/](\d{4})/i);if(m){period=m[2]+m[1];break;}}
+    // заглавен ред: съдържа „идентификац" и „контрагент"
+    let hi=-1;
+    for(let i=0;i<Math.min(raw.length,15);i++){const t=raw[i].map(c=>String(c).toLowerCase()).join(' ');if(t.includes('идентификац')&&t.includes('контрагент')){hi=i;break;}}
+    if(hi<0){showEntryMsg('Не разпознавам счетоводния дневник (липсват колони „Идентификационен номер" и „контрагент"). Увери се, че е листът „PurchaseDiaryReport".','err');return;}
+    const H=raw[hi].map(c=>String(c).toLowerCase().replace(/\s+/g,' ').trim());
+    const find=(...keys)=>{for(const k of keys){const idx=H.findIndex(h=>h.includes(k));if(idx>=0)return idx;}return -1;};
+    const cType=find('вид на документа'),cNum=find('номер на документа'),cDate=find('дата на документа'),cVin=find('идентификац'),cName=find('име на контрагент');
+    const baseCols=[],vatCols=[];
+    H.forEach((h,idx)=>{if(h.startsWith('до на получените'))baseCols.push(idx);if(h.startsWith('ддс с право'))vatCols.push(idx);});
+    const rows=[];
+    let start=hi+1;
+    const lg=raw[start]||[];
+    if(String(lg[0]).trim()==='1'&&String(lg[1]).trim()==='2'&&String(lg[2]).trim()==='3')start++; // прескача реда с номера на колони (1,2,3…)
+    for(let i=start;i<raw.length;i++){
+      const row=raw[i];
+      const joined=row.map(c=>String(c).toLowerCase()).join('');
+      if(joined.includes('общо:')||joined.includes('счетоводител'))break;
+      const vin=cVin>=0?String(row[cVin]||'').trim():'';
+      const docnum=cNum>=0?String(row[cNum]||'').trim():'';
+      if(!vin&&!docnum)continue;
+      let base=0,vat=0;
+      baseCols.forEach(idx=>{const n=parseNum(row[idx]);if(n)base+=n;});
+      vatCols.forEach(idx=>{const n=parseNum(row[idx]);if(n)vat+=n;});
+      rows.push({vin,name:cName>=0?String(row[cName]||'').trim():'',period,docnum,
+        doctype:mapDiaryType(cType>=0?row[cType]:''),date:normDate(cDate>=0?row[cDate]:''),
+        base:normAmt(base),vat:normAmt(vat),payment:'Банка',paydate:'',comment:''});
+    }
+    if(!rows.length){showEntryMsg('Не намирам редове с данни в дневника.','err');return;}
+    if(entryData.length&&!confirm(`Дневникът съдържа ${rows.length} реда за период ${period||'(неизвестен)'}.\n\nОК = ДОБАВИ към текущите ${entryData.length} реда\nОтказ = ЗАМЕНИ всички текущи редове`)){
+      entryData=rows;
+    }else{
+      entryData=entryData.concat(rows);
+    }
+    rows.forEach(r=>pdMerge(r.vin,r.name));pdSave();
+    renderEntry();autoSave();
+    showEntryMsg(`✓ Заредени ${rows.length} реда от счетоводния дневник (период ${period||'?'}).`,'ok');
+  }catch(err){showEntryMsg('Грешка при четене на дневника: '+err.message,'err');}};
+  r.readAsArrayBuffer(file);
+}
+
+// ══════════════════════════ IMPORT MODAL ══════════════════════════
+function openImport(){document.getElementById('importModal').classList.add('open');}
+function closeImport(){document.getElementById('importModal').classList.remove('open');}
+function doImport(){
+  const text=document.getElementById('importText').value.trim();if(!text)return;
+  let added=0;
+  text.split(/\r?\n/).filter(l=>l.trim()).forEach(l=>{
+    const sep=l.includes('\t')?'\t':';';
+    const p=l.split(sep).map(c=>c.trim().replace(/^["']|["']$/g,''));
+    if(p.length>=2){addRow({vin:p[0]||'',name:p[1]||'',period:p[2]||'',docnum:p[3]||'',doctype:p[4]||'01 - Фактура',date:p[5]||'',base:p[6]||'',vat:p[7]||'',payment:p[8]||'Банка',paydate:p[9]||'',comment:p[10]||''});added++;}
+  });
+  closeImport();document.getElementById('importText').value='';
+  showEntryMsg(`✓ Импортирани ${added} реда.`,'ok');
+}
+
+// ══════════════════════════ COMPARE ══════════════════════════
+function vinNorm(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^[A-Z]{2}(?=\d)/,'');}
+function makeKey(r){return vinNorm(r.vin)+'|||'+String(r.docnum||'').replace(/\s/g,'').replace(/^0+/,'')+'|||'+String(r.period||'');}
+function runCompare(){
+  clearMsg('msgCompare');
+  if(!napData.length)return showMsg('msgCompare','Заредете Файл А от НАП (Таб „Файл А").','err');
+  if(!entryData.length)return showMsg('msgCompare','Въведете данни в Файл Б (Таб „Файл Б").','err');
+  const bMap={};entryData.forEach(r=>{const k=makeKey(r);if(!bMap[k])bMap[k]=r;});
+  compareRows=[];const matched=new Set();
+  napData.forEach(rA=>{
+    const k=makeKey(rA);const rB=bMap[k];matched.add(k);
+    const bA=rA.base,vA=rA.vat,bB=rB?nv(rB.base):null,vB=rB?nv(rB.vat):null;
+    const dB=rB?Math.round((bA-bB)*100)/100:null,dV=rB?Math.round((vA-vB)*100)/100:null;
+    compareRows.push({vin:rA.vin,name:rA.name,period:rA.period,docnum:rA.docnum,doctype:rA.doctype,date:rA.date,
+      baseA:bA,vatA:vA,baseB:bB,vatB:vB,dBase:dB,dVat:dV,
+      payment:rB?rB.payment:'',paydate:rB?rB.paydate:'',comment:rB?rB.comment:'',_ek:k,
+      status:!rB?'only_a':(dB!==0||dV!==0)?'diff':'match'});
+  });
+  entryData.forEach(rB=>{
+    const k=makeKey(rB);if(!matched.has(k))
+      compareRows.push({vin:rB.vin,name:rB.name,period:rB.period,docnum:rB.docnum,doctype:rB.doctype,date:rB.date,
+        baseA:null,vatA:null,baseB:nv(rB.base),vatB:nv(rB.vat),dBase:null,dVat:null,
+        payment:rB.payment,paydate:rB.paydate,comment:rB.comment,_ek:k,status:'only_b'});
+  });
+  const periods=[...new Set(compareRows.map(r=>String(r.period)).filter(Boolean))].sort();
+  const pSel=document.getElementById('filterPeriod');
+  pSel.innerHTML='<option value="">Всички периоди</option>'+periods.map(p=>`<option>${p}</option>`).join('');
+  const diffs=compareRows.filter(r=>r.status==='diff').length;
+  const only=compareRows.filter(r=>r.status==='only_a'||r.status==='only_b').length;
+  document.getElementById('stA').textContent=napData.length;
+  document.getElementById('stB').textContent=entryData.length;
+  document.getElementById('stDiff').textContent=diffs;
+  document.getElementById('stOnly').textContent=only;
+  document.getElementById('stMatch').textContent=compareRows.filter(r=>r.status==='match').length;
+  document.getElementById('compareStats').style.display='block';
+  currentFilter='all';cmpSortCol='';cmpSortAsc=true;
+  document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.filter-chip').classList.add('active');
+  renderCompare();
+  if(diffs+only===0)showMsg('msgCompare','✓ Двата файла съвпадат напълно!','ok');
+  else showMsg('msgCompare',`⚠ ${diffs} реда с разлики, ${only} само в едното.`,'err');
+}
+function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderCompare();}
+const TH_COLS=['_si','vin','name','period','docnum','doctype','date','baseA','baseB','dBase','vatA','vatB','dVat','payment','paydate','_comment','status'];
+function thSort(col){
+  if(cmpSortCol===col)cmpSortAsc=!cmpSortAsc;else{cmpSortCol=col;cmpSortAsc=true;}
+  document.querySelectorAll('#cmpTable thead th').forEach((th,i)=>{th.classList.remove('sort-asc','sort-desc');if(TH_COLS[i]===col)th.classList.add(cmpSortAsc?'sort-asc':'sort-desc');});
+  renderCompare();
+}
+function applyCmpDropSort(){cmpSortCol=document.getElementById('cmpSortField').value;cmpSortAsc=true;renderCompare();}
+function toggleCmpSort(){cmpSortAsc=!cmpSortAsc;document.getElementById('cmpSortDir').textContent=cmpSortAsc?'↑ Възх.':'↓ Низх.';renderCompare();}
+function sortedCompare(rows){
+  const col=cmpSortCol;if(!col)return rows;
+  const NUM=['baseA','baseB','vatA','vatB','dBase','dVat'];
+  return[...rows].sort((a,b)=>{
+    let av=a[col]??'',bv=b[col]??'';
+    if(NUM.includes(col)){av=Number(av)||0;bv=Number(bv)||0;}
+    else if(col==='date'||col==='paydate'){av=dnum(av);bv=dnum(bv);}
+    else{av=String(av).toLowerCase();bv=String(bv).toLowerCase();}
+    const c=av<bv?-1:av>bv?1:0;return cmpSortAsc?c:-c;
+  });
+}
+function inlineUpdate(ri,field,val){
+  compareRows[ri][field]=val;
+  const ed=entryData.find(r=>makeKey(r)===compareRows[ri]._ek);
+  if(ed)ed[field]=val;
+  autoSave();
+}
+function renderCompare(){
+  const q=(document.getElementById('searchBox').value||'').toLowerCase();
+  const pf=document.getElementById('filterPeriod').value;
+  const pmf=document.getElementById('filterPayment').value;
+  let rows=compareRows.map((r,i)=>({...r,_ri:i}));
+  if(currentFilter==='unpaid')rows=rows.filter(r=>!r.paydate||!r.paydate.trim());
+  else if(currentFilter!=='all')rows=rows.filter(r=>r.status===currentFilter);
+  if(q)rows=rows.filter(r=>[r.vin,r.name,r.docnum,r.period,r.date,r.comment].join(' ').toLowerCase().includes(q));
+  if(pf)rows=rows.filter(r=>String(r.period)===pf);
+  if(pmf)rows=rows.filter(r=>r.payment===pmf);
+  rows=sortedCompare(rows);
+  const body=document.getElementById('compareBody');
+  if(!rows.length){body.innerHTML=`<tr><td colspan="17" style="text-align:center;padding:2rem;color:var(--ink3)">Няма резултати</td></tr>`;return;}
+  body.innerHTML=rows.map((r,si)=>{
+    const ri=r._ri;
+    const cls=r.status==='diff'?'r-diff':r.status==='only_a'?'r-ona':r.status==='only_b'?'r-onb':'';
+    const badge=r.status==='diff'?'<span class="badge bd-diff">⚠ Разлика</span>':r.status==='only_a'?'<span class="badge bd-ona">Липсва при мен</span>':r.status==='only_b'?'<span class="badge bd-onb">Липсва в НАП</span>':'<span class="badge bd-match">✓ Съвпада</span>';
+    const db=r.dBase!==null?(r.dBase===0?`<span style="color:var(--ink3)">0.00</span>`:`<span class="val-diff">${r.dBase>0?'+':''}${fmt(r.dBase)}</span>`):'—';
+    const dv=r.dVat!==null?(r.dVat===0?`<span style="color:var(--ink3)">0.00</span>`:`<span class="val-diff">${r.dVat>0?'+':''}${fmt(r.dVat)}</span>`):'—';
+    const pmOpts=PAYMENTS.map(t=>`<option${t===(r.payment||'')?' selected':''}>${t}</option>`).join('');
+    const noP=!r.paydate||!r.paydate.trim();
+    return`<tr class="${cls}">
+      <td style="color:var(--ink3);font-size:10px">${si+1}</td>
+      <td class="mono">${esc(r.vin)||'—'}</td><td class="wide">${esc(r.name)||'—'}</td>
+      <td class="mono">${esc(r.period)||'—'}</td><td class="mono">${esc(r.docnum)||'—'}</td>
+      <td style="font-size:11px">${esc(r.doctype)||'—'}</td><td class="mono">${esc(r.date)||'—'}</td>
+      <td class="val-a">${r.baseA!==null?fmt(r.baseA):'—'}</td>
+      <td class="val-b">${r.baseB!==null?fmt(r.baseB):'—'}</td>
+      <td>${db}</td>
+      <td class="val-a">${r.vatA!==null?fmt(r.vatA):'—'}</td>
+      <td class="val-b">${r.vatB!==null?fmt(r.vatB):'—'}</td>
+      <td>${dv}</td>
+      <td><select class="inline-sel" onchange="inlineUpdate(${ri},'payment',this.value)">${pmOpts}</select></td>
+      <td><input class="inline-edit${noP?' no-pay':''}" value="${esc(r.paydate)}" placeholder="${noP?'⚠ не платено':''}" title="${noP?'Липсва дата на плащане':''}" onchange="inlineUpdate(${ri},'paydate',this.value);this.classList.toggle('no-pay',!this.value.trim())"></td>
+      <td><input class="inline-edit" value="${esc(r.comment)}" placeholder="коментар..." onchange="inlineUpdate(${ri},'comment',this.value)" style="min-width:110px"></td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════ EXPORT ══════════════════════════
+function buildRows(rows){
+  return[['ВИН','Наименование','Период','№ Документ','Тип','Дата','Осн. НАП','Осн. Моя','Δ Основа','ДДС НАП','ДДС Моя','Δ ДДС','Нач. плащане','Дата плащане','Коментар','Статус'],
+    ...rows.map(r=>[r.vin,r.name,r.period,r.docnum,r.doctype,r.date,r.baseA??'',r.baseB??'',r.dBase??'',r.vatA??'',r.vatB??'',r.dVat??'',r.payment,r.paydate,r.comment,r.status])];
+}
+function csvBlob(data){return new Blob(['\uFEFF'+data.map(r=>r.join(';')).join('\n')],{type:'text/csv;charset=utf-8;'});}
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();}
+function exportDiffCsv(){if(!compareRows.length)return;dl(csvBlob(buildRows(compareRows.filter(r=>r.status!=='match'))),'nap_razliki.csv');}
+function exportAllCsv(){if(!compareRows.length)return;dl(csvBlob(buildRows(compareRows)),'nap_sravnenie.csv');}
+function exportAllXlsx(){
+  const wb=XLSX.utils.book_new();
+  const archRows=[ARCH_HEAD,...entryData.map(r=>archRowXlsx(r))];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(archRows),'Файл Б (архив)');
+  if(compareRows.length){
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(buildRows(compareRows)),'Сравнение');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(buildRows(compareRows.filter(r=>r.status!=='match'))),'Само разлики');
+    const up=compareRows.filter(r=>!r.paydate||!r.paydate.trim());
+    if(up.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(buildRows(up)),'Неплатени');
+  }
+  if(napData.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['ВИН','Наименование','Период','№ Документ','Тип','Дата','Данъчна основа','ДДС'],...napData.map(r=>[r.vin,r.name,r.period,r.docnum,r.doctype,r.date,r.base,r.vat])]),'Файл А НАП');
+  XLSX.writeFile(wb,'nap_spravka_'+curPeriod()+'.xlsx');
+}
+
+// ══════════════════════════ HELPERS ══════════════════════════
+function fmt(v){if(v===null||v===undefined||v==='')return'—';return Number(v).toLocaleString('bg-BG',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function showMsg(id,txt,type){const el=document.getElementById(id);if(el)el.innerHTML=`<div class="msg ${type}">${txt}</div>`;}
+function clearMsg(id){const el=document.getElementById(id);if(el)el.innerHTML='';}
+function showEntryMsg(txt,type){showMsg('msgEntry',txt,type);}
+
+// ── Защитен диалог преди изтриване (т.В) ──
+let _guardAction=null;
+function guardClear(action,title,msg){
+  _guardAction=action;
+  document.getElementById('guardTitle').textContent=title||'Сигурен ли си?';
+  document.getElementById('guardMsg').textContent=msg||'';
+  document.getElementById('guardArch').style.display=entryData.length?'':'none';
+  document.getElementById('guardModal').classList.add('open');
+}
+function guardCancel(){document.getElementById('guardModal').classList.remove('open');_guardAction=null;}
+function guardProceed(withArchive){
+  document.getElementById('guardModal').classList.remove('open');
+  if(withArchive&&entryData.length)archiveXlsx();
+  const a=_guardAction;_guardAction=null;
+  if(typeof a==='function')a();
+}
+
+// ── Запис на архив в Google Drive (т.5) ──
+async function gdEnsureToken(){
+  const {clientId}=gdCfg();
+  if(!clientId){openGdSettings();throw new Error('Първо въведи Google Client ID (бутон „⚙ Google Drive").');}
+  await loadScript('https://accounts.google.com/gsi/client');
+  if(!gdTokenClient){
+    gdTokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:clientId,
+      scope:'https://www.googleapis.com/auth/drive.file',
+      callback:()=>{}
+    });
+  }
+  return await new Promise((resolve,reject)=>{
+    gdTokenClient.callback=(resp)=>{if(resp.error){reject(new Error(resp.error));return;}gdToken=resp.access_token;gdGotConsent=true;resolve(gdToken);};
+    gdTokenClient.requestAccessToken({prompt:gdGotConsent?'':'consent'});
+  });
+}
+async function gdFindOrCreateFolder(token,name){
+  const q=encodeURIComponent(`name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  try{
+    const r=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)&spaces=drive',{headers:{Authorization:'Bearer '+token}});
+    if(r.ok){const d=await r.json();if(d.files&&d.files.length)return d.files[0].id;}
+  }catch(_){}
+  const cr=await fetch('https://www.googleapis.com/drive/v3/files?fields=id',{
+    method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({name:name,mimeType:'application/vnd.google-apps.folder'})
+  });
+  if(!cr.ok)return null;
+  const cd=await cr.json();return cd.id;
+}
+async function archiveToDrive(){
+  if(!entryData.length){showEntryMsg('Няма данни за архивиране.','err');return;}
+  try{
+    showEntryMsg('☁ Свързване с Google Drive...','info');
+    const token=await gdEnsureToken();
+    const wb=XLSX.utils.book_new();
+    const rows=[ARCH_HEAD,...entryData.map(r=>archRowXlsx(r))];
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:14},{wch:30},{wch:8},{wch:18},{wch:20},{wch:12},{wch:14},{wch:10},{wch:14},{wch:14},{wch:30}];
+    XLSX.utils.book_append_sheet(wb,ws,'Архив Файл Б');
+    const out=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+    const blob=new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    showEntryMsg('☁ Качване в Google Drive...','info');
+    const folderId=await gdFindOrCreateFolder(token,'НАП Архив');
+    const fileName=curDateStr()+'_arhiv_fail.xlsx';
+    const meta={name:fileName};if(folderId)meta.parents=[folderId];
+    const form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+    form.append('file',blob);
+    const resp=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',{
+      method:'POST',headers:{Authorization:'Bearer '+token},body:form
+    });
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||('Грешка '+resp.status));}
+    const f=await resp.json();
+    showEntryMsg('✓ Архивът е качен в Google Drive → папка „НАП Архив" ('+esc(f.name)+').','ok');
+  }catch(e){showEntryMsg('Google Drive грешка: '+(e.message||e),'err');}
+}
+
+// ══════════════════════════════════════════════════════════════
+//                    OCR (Фактури → Файл Б)
+// ══════════════════════════════════════════════════════════════
+const apiKeyInput=()=>document.getElementById('apiKey');
+function initOcr(){
+  const k=apiKeyInput();
+  const saved=localStorage.getItem(OCR_KEY_LS);
+  if(saved)k.value=saved;
+  k.addEventListener('input',()=>localStorage.setItem(OCR_KEY_LS,k.value.trim()));
+  try{const s=localStorage.getItem(OCR_STAGE_LS);if(s)ocrRows=JSON.parse(s);}catch(e){}
+  // drop zone
+  const dz=document.getElementById('ocrDrop');
+  dz.addEventListener('click',()=>openFilePick());
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');if(e.dataTransfer.files.length)ocrFilesPicked(e.dataTransfer.files);});
+  renderOcr();renderOcrQueue();
+}
+// camera + file pickers
+let serialMode=true;
+function openCamera(){document.getElementById('camInput').click();}
+function openFilePick(){document.getElementById('fileInput').click();}
+function onCamCapture(inp){
+  const had=inp.files&&inp.files.length>0;
+  if(had)ocrFilesPicked(inp.files);
+  inp.value='';
+  // серийно: отваря камерата пак (синхронно, в рамките на жеста)
+  if(had&&serialMode){try{inp.click();}catch(e){}}
+}
+function toggleKey(){
+  const i=apiKeyInput();const btn=event.target;
+  i.type=i.type==='password'?'text':'password';
+  btn.textContent=i.type==='password'?'Покажи':'Скрий';
+}
+function ocrSaveStage(){try{localStorage.setItem(OCR_STAGE_LS,JSON.stringify(ocrRows));}catch(e){}}
+function ocrSetStatus(type,msg){const s=document.getElementById('ocrStatus');s.className='ocr-status '+type;document.getElementById('ocrStatusMsg').textContent=msg;}
+function ocrClearStatus(){document.getElementById('ocrStatus').className='ocr-status';}
+function ocrFmtSize(b){if(b<1048576)return(b/1024).toFixed(0)+' KB';return(b/1048576).toFixed(1)+' MB';}
+
+function ocrFilesPicked(fileList){
+  const allowed=['image/png','image/jpeg','image/webp','image/gif','application/pdf'];
+  const files=[...fileList];
+  let rejected=0;
+  files.forEach(f=>{
+    if(!allowed.includes(f.type)){rejected++;return;}
+    if(f.size>20971520){rejected++;return;}
+    const item={file:f,name:f.name,mediaType:f.type,base64:null,status:'pending'};
+    ocrQueue.push(item);
+    const reader=new FileReader();
+    reader.onload=e=>{item.base64=e.target.result.split(',')[1];renderOcrQueue();};
+    reader.readAsDataURL(f);
+  });
+  if(rejected)ocrSetStatus('error',`${rejected} файл(а) са пропуснати (формат или >20MB).`);
+  else ocrClearStatus();
+  renderOcrQueue();
+}
+function ocrRemoveQueue(idx){ocrQueue.splice(idx,1);renderOcrQueue();}
+function renderOcrQueue(){
+  const c=document.getElementById('ocrQueue');
+  c.innerHTML=ocrQueue.map((it,i)=>{
+    const ic=it.status==='done'?'✓':it.status==='err'?'✕':it.status==='busy'?'<div class="spinner"></div>':'•';
+    const cls=it.status==='done'?'done':it.status==='err'?'err':'';
+    return`<div class="ocr-chip ${cls}"><span class="st">${ic}</span><span class="nm" title="${esc(it.name)}">${esc(it.name)} · ${ocrFmtSize(it.file.size)}</span>${it.status==='pending'?`<button class="ocr-rm" onclick="ocrRemoveQueue(${i})">✕</button>`:''}</div>`;
+  }).join('');
+  const ready=ocrQueue.some(it=>it.status==='pending'&&it.base64);
+  document.getElementById('btnOcr').disabled=!ready;
+}
+
+async function runOcrQueue(){
+  const key=apiKeyInput().value.trim();
+  if(!key||!key.startsWith('sk-ant')){ocrSetStatus('error','Въведи валиден Anthropic API ключ.');return;}
+  const pending=ocrQueue.filter(it=>it.status==='pending'&&it.base64);
+  if(!pending.length){ocrSetStatus('error','Няма файлове за обработка.');return;}
+  document.getElementById('btnOcr').disabled=true;
+  let ok=0,fail=0;
+  for(let n=0;n<pending.length;n++){
+    const it=pending[n];
+    it.status='busy';renderOcrQueue();
+    ocrSetStatus('loading',`Анализирам ${n+1}/${pending.length}: ${it.name}`);
+    try{
+      const inv=await ocrExtract(key,it);
+      inv._file=it.name;
+      ocrRows.push(inv);
+      ocrSaveStage();renderOcr();
+      it.status='done';ok++;
+    }catch(e){it.status='err';it.err=e.message;fail++;}
+    renderOcrQueue();
+  }
+  if(fail)ocrSetStatus('error',`Готово: ${ok} успешни, ${fail} с грешка.`);
+  else ocrSetStatus('success',`✓ Извлечени ${ok} фактури. Прегледай ги и натисни „Добави към Файл Б".`);
+  // clear done items from queue after a moment
+  setTimeout(()=>{ocrQueue=ocrQueue.filter(it=>it.status==='err');renderOcrQueue();},1500);
+}
+
+async function ocrExtract(apiKey,it){
+  const prompt=`Analyze this invoice image and extract the following data. Return ONLY a valid JSON object, no markdown, no explanation.
+
+JSON structure:
+{
+  "date": "DD.MM.YYYY or empty string",
+  "invoice_number": "invoice number as string",
+  "issuer": "name of the company that issued the invoice (доставчик/издател)",
+  "recipient": "name of the company that received the invoice (получател)",
+  "eik": "EIK/Bulstat number of the issuer (9 or 13 digits)",
+  "vat_number": "VAT/DDS registration number of the issuer (e.g. BG123456789)",
+  "base_amount": numeric value without VAT (number),
+  "vat_amount": VAT amount (number),
+  "total_amount": total with VAT (number),
+  "currency": "BGN or EUR or USD etc"
+}
+
+Rules:
+- Extract numbers as plain numbers (not strings), use dot as decimal separator
+- If a value is not found, use null
+- Return ONLY the JSON, nothing else`;
+
+  const contentArray=it.mediaType==='application/pdf'
+    ?[{type:'document',source:{type:'base64',media_type:'application/pdf',data:it.base64}},{type:'text',text:prompt}]
+    :[{type:'image',source:{type:'base64',media_type:it.mediaType,data:it.base64}},{type:'text',text:prompt}];
+
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1024,messages:[{role:'user',content:contentArray}]})
+  });
+  if(!resp.ok){
+    const err=await resp.json().catch(()=>({}));
+    if(resp.status===401)throw new Error('Невалиден API ключ.');
+    if(resp.status===429)throw new Error('Лимит достигнат.');
+    throw new Error(err.error?.message||'Грешка '+resp.status);
+  }
+  const data=await resp.json();
+  let raw=(data.content||[]).map(b=>b.text||'').join('').trim();
+  raw=raw.replace(/```json|```/g,'').trim();
+  return JSON.parse(raw);
+}
+
+function ocrUpdate(idx,field,val){
+  if(field==='base_amount'||field==='vat_amount'||field==='total_amount'){
+    ocrRows[idx][field]=val===''?null:val;
+  }else ocrRows[idx][field]=val;
+  ocrSaveStage();
+}
+function ocrRemove(idx){ocrRows.splice(idx,1);ocrSaveStage();renderOcr();}
+function ocrClear(){if(!ocrRows.length)return;if(!confirm('Изчистване на извлечените фактури?'))return;ocrRows=[];ocrSaveStage();renderOcr();}
+
+function dateToPeriod(d){
+  if(!d)return curPeriod();
+  const m=String(d).match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/);
+  if(m){let y=m[3];if(y.length===2)y='20'+y;return y+String(m[2]).padStart(2,'0');}
+  const m2=String(d).match(/(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})/);
+  if(m2)return m2[1]+String(m2[2]).padStart(2,'0');
+  return curPeriod();
+}
+function ocrToEntry(inv){
+  return {
+    vin:(inv.vat_number||inv.eik||'').toString().trim(),
+    name:inv.issuer||'',
+    period:dateToPeriod(inv.date),
+    docnum:(inv.invoice_number||'').toString().trim(),
+    doctype:'01 - Фактура',
+    date:inv.date||'',
+    base:inv.base_amount!=null?inv.base_amount:'',
+    vat:inv.vat_amount!=null?inv.vat_amount:'',
+    payment:'Банка',
+    paydate:'',
+    comment:(inv.currency&&inv.currency!=='BGN'?('Валута: '+inv.currency):'')
+  };
+}
+function ocrAddOne(idx){
+  addRow(ocrToEntry(ocrRows[idx]));
+  ocrRows.splice(idx,1);ocrSaveStage();renderOcr();
+  showEntryMsg('✓ 1 фактура добавена към Файл Б.','ok');
+}
+function ocrAddAll(){
+  if(!ocrRows.length){ocrSetStatus('error','Няма извлечени фактури.');return;}
+  const n=ocrRows.length;
+  ocrRows.forEach(inv=>addRow(ocrToEntry(inv)));
+  ocrRows=[];ocrSaveStage();renderOcr();
+  ocrSetStatus('success',`✓ ${n} фактури добавени към Файл Б.`);
+  // jump to entry tab
+  const entryTab=[...document.querySelectorAll('.tab')].find(t=>t.textContent.includes('Файл Б'));
+  if(entryTab)switchTab('tab-entry',entryTab);
+}
+
+function renderOcr(){
+  const badge=document.getElementById('ocrCountBadge');
+  if(ocrRows.length){badge.style.display='inline';badge.textContent=ocrRows.length;}
+  else badge.style.display='none';
+  const body=document.getElementById('ocrBody');
+  if(!ocrRows.length){
+    body.innerHTML=`<tr><td colspan="10"><div class="ocr-empty"><span class="ic">📷</span>Качи или снимай фактура, за да започнеш.<br>Извлечените редове се добавят към <strong>Файл Б</strong>.</div></td></tr>`;
+    return;
+  }
+  body.innerHTML=ocrRows.map((inv,i)=>`<tr>
+    <td style="color:var(--ink3);font-size:10px">${i+1}</td>
+    <td><input class="me-input" style="width:90px" value="${esc(inv.date)}" onchange="ocrUpdate(${i},'date',this.value)"></td>
+    <td><input class="me-input" style="width:110px" value="${esc(inv.invoice_number)}" onchange="ocrUpdate(${i},'invoice_number',this.value)"></td>
+    <td><input class="me-input" style="width:150px" value="${esc(inv.issuer)}" onchange="ocrUpdate(${i},'issuer',this.value)"></td>
+    <td><input class="me-input" style="width:120px" value="${esc(inv.vat_number||inv.eik||'')}" onchange="ocrUpdate(${i},'vat_number',this.value)"></td>
+    <td><input class="me-input num" style="width:90px" value="${inv.base_amount!=null?inv.base_amount:''}" onchange="ocrUpdate(${i},'base_amount',this.value)"></td>
+    <td><input class="me-input num" style="width:80px" value="${inv.vat_amount!=null?inv.vat_amount:''}" onchange="ocrUpdate(${i},'vat_amount',this.value)"></td>
+    <td class="mono" style="color:var(--accent)">${inv.total_amount!=null?fmt(inv.total_amount):'—'}</td>
+    <td class="mono">${esc(inv.currency||'BGN')}</td>
+    <td style="white-space:nowrap">
+      <button class="btn btn-green" style="padding:4px 8px" title="Добави в Файл Б" onclick="ocrAddOne(${i})">➕</button>
+      <button class="me-del" onclick="ocrRemove(${i})" title="Изтрий">✕</button>
+    </td>
+  </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+//                    GOOGLE DRIVE PICKER
+// ══════════════════════════════════════════════════════════════
+let gdToken=null, gdTokenClient=null, gdGotConsent=false;
+function gdCfg(){return{clientId:(localStorage.getItem('gd_client_id')||'').trim(),apiKey:(localStorage.getItem('gd_api_key')||'').trim()};}
+function openGdSettings(){
+  const c=gdCfg();
+  document.getElementById('gdClientId').value=c.clientId;
+  document.getElementById('gdApiKey').value=c.apiKey;
+  document.getElementById('gdModal').classList.add('open');
+}
+function closeGdSettings(){document.getElementById('gdModal').classList.remove('open');}
+function saveGdSettings(){
+  localStorage.setItem('gd_client_id',document.getElementById('gdClientId').value.trim());
+  localStorage.setItem('gd_api_key',document.getElementById('gdApiKey').value.trim());
+  closeGdSettings();
+  ocrSetStatus('success','✓ Google Drive настройките са запазени.');
+}
+function loadScript(src){return new Promise((res,rej)=>{
+  if([...document.scripts].some(s=>s.src===src))return res();
+  const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('Неуспешно зареждане: '+src));document.head.appendChild(s);
+});}
+async function openDrivePicker(){
+  const {clientId,apiKey}=gdCfg();
+  if(!clientId||!apiKey){
+    openGdSettings();
+    ocrSetStatus('error','Първо въведи Google Client ID и API Key (или на телефон ползвай „📁 Файл").');
+    return;
+  }
+  try{
+    ocrSetStatus('loading','Свързване с Google Drive...');
+    await loadScript('https://apis.google.com/js/api.js');
+    await new Promise(r=>gapi.load('picker',r));
+    await loadScript('https://accounts.google.com/gsi/client');
+    await new Promise((resolve,reject)=>{
+      gdTokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:clientId,
+        scope:'https://www.googleapis.com/auth/drive.file',
+        callback:(resp)=>{if(resp.error){reject(new Error(resp.error));return;}gdToken=resp.access_token;gdGotConsent=true;resolve();}
+      });
+      gdTokenClient.requestAccessToken({prompt:gdGotConsent?'':'consent'});
+    });
+    const view=new google.picker.DocsView(google.picker.ViewId.DOCS)
+      .setMimeTypes('image/png,image/jpeg,image/webp,image/gif,application/pdf')
+      .setSelectFolderEnabled(false);
+    const picker=new google.picker.PickerBuilder()
+      .addView(view)
+      .setOAuthToken(gdToken)
+      .setDeveloperKey(apiKey)
+      .setCallback(gdPickerCallback)
+      .build();
+    picker.setVisible(true);
+    ocrClearStatus();
+  }catch(e){
+    ocrSetStatus('error','Google Drive грешка: '+(e.message||e));
+  }
+}
+async function gdPickerCallback(data){
+  if(!data||data.action!==google.picker.Action.PICKED)return;
+  ocrSetStatus('loading','Изтеглям от Google Drive...');
+  try{
+    for(const doc of data.docs){
+      const resp=await fetch(`https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media`,{headers:{Authorization:'Bearer '+gdToken}});
+      if(!resp.ok)throw new Error('Не мога да изтегля файла ('+resp.status+')');
+      const blob=await resp.blob();
+      const mime=doc.mimeType||blob.type;
+      const file=new File([blob],doc.name||'drive-file',{type:mime});
+      ocrFilesPicked([file]);
+    }
+    ocrSetStatus('success','✓ Файлът е добавен. Натисни „Извлечи данните".');
+  }catch(e){ocrSetStatus('error',e.message||String(e));}
+}
+</script>
+</body>
+</html>
